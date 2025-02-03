@@ -1,0 +1,45 @@
+openapi: 3.0.0
+info:
+  title: S3 API for Save File
+  version: 1.0.0
+  description: API to save a file to S3.
+
+paths:
+  /save_file:
+    post:
+      summary: Save a file to S3
+      description: Uploads a file to an S3 bucket.
+      operationId: UploadFileToS3
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file_key:
+                  type: string
+                  description: The unique key (filename) under which the file will be stored in S3.
+                file:
+                  type: string                 
+                  description: The actual file content to be uploaded.
+              required:
+                - file_key
+                - file
+      responses:
+        "200":
+          description: File successfully uploaded to S3.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  file_url:
+                    type: string
+                    description: The public URL of the uploaded file.
+        '400':
+          description: Bad request. Invalid input.
+        '500':
+          description: Internal server error.

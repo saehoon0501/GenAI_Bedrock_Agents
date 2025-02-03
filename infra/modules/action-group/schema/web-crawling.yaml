@@ -1,0 +1,27 @@
+openapi: 3.0.0
+info:
+  title: My Lambda API
+  version: 1.0.0
+
+paths:
+  /hello:
+    get:
+      summary: "Invoke the HelloWorld Lambda function."
+      description: "An example endpoint that calls a Lambda function using AWS_PROXY integration."
+      operationId: "HelloWorldOperation"
+      responses:
+        '200':
+          description: "Successful response from Lambda."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+      # The custom API Gateway integration that specifies Lambda as the backend
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        httpMethod: POST
+        uri: arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:HelloWorld/invocations
+        passthroughBehavior: when_no_match
