@@ -26,27 +26,30 @@ variable "instruction" {
     description = "The instruction to use for the agent"
 }
 
-variable "orchestration_prompt_template" {
-    type = string
-    description = "The base prompt template to use for the agent"
+variable "custom_prompt_configuration" {
+    description = "The custom prompt configuration to use for the agent"
+    type = map(object({
+        prompt_configurations = set(object({
+            base_prompt_template = string
+            parser_mode = string
+            prompt_creation_mode = string
+            prompt_state = string
+            prompt_type = string
+            inference_configuration = object({
+                maximumLength = number
+                stopSequences = list(string)
+                temperature = number
+                topP = number
+                topK = number
+            })
+        }))        
+    }))
+    default = null
 }
 
-variable "orchestration_inference_configuration" {
-    description = "Configuration for the orchestration inference settings"
-    type = object({
-        maximumLength = number
-        stopSequences = list(string)
-        temperature = number
-        topP = number
-        topK = number
-    })
-    default = {
-        maximumLength = 2048
-        stopSequences = []
-        temperature = 0
-        topP = 1
-        topK = 250
-    }
+variable "agent_role_arn" {
+    type = string
+    description = "The ARN of the agent role"
 }
 
 variable "tags" {
@@ -57,4 +60,21 @@ variable "tags" {
 variable "environment" {
     type = string
     description = "The environment to use for the agent"
+}
+
+variable "agent_collaboration" {
+    type = string
+    description = "The agent collaboration to use for the agent"
+    default = "DISABLED"
+}
+
+variable "agent_role_name" {
+    type = string
+    description = "The name of the agent role"
+}
+
+variable "prepare_agent" {
+    type = bool
+    description = "Whether to prepare the agent"
+    default = true
 }

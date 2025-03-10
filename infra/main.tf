@@ -54,26 +54,6 @@ module "vpc" {
   }
 }
 
-module "sqs" {
-  source = "./modules/sqs"
-  project_name = local.project_name
-
-  tags = {    
-    Name = "my-cron-queue"
-    "${local.project_name}-env" = "${local.project_name}-resource"
-  }
-}
-
-module "cron_event" {
-  source = "./modules/event"
-  event_queue_arn = module.sqs.queue_arn
-
-  tags = {
-    Name = "my-cron-event"
-    "${local.project_name}-env" = "${local.project_name}-resource"
-  }
-}
-
 module "s3_bucket" {
   source = "./modules/s3"
   project_name = local.project_name
@@ -82,28 +62,97 @@ module "s3_bucket" {
     "${local.project_name}-env" = "${local.project_name}-resource"
   }
 }
-
-module "ai_agent" {
-  source = "./modules/ai-agent"
-  project_name = local.project_name
-  # s3_bucket_arn = module.s3_bucket.bucket_arn  
-  # lambda_function_arn = module.backend.lambda_function_arn
-  foundation_model = var.foundation_model
-  instruction = var.instruction
-  orchestration_prompt_template = var.orchestration_prompt_template
-  orchestration_inference_configuration = {
-    maximumLength = 2000    
-    temperature = 0.5
-    stopSequences = ["\n\nHuman:"]
-    topP = 0.9
-    topK = 250
-  }
-  environment = "dev"
-
+module "agent_iam" {
+  source = "./modules/iam"  
   tags = {
-    Name = "my-s3-bucket" 
+    Name = "my-iam"
     "${local.project_name}-env" = "${local.project_name}-resource"
   }
+}
+
+module "ai_agent_supervisor" {
+  source = "./modules/ai-agent"
+  project_name = local.project_name
+  foundation_model = var.foundation_model
+  instruction = var.instruction_supervisor
+  agent_role_arn = module.agent_iam.agent_role_arn
+  agent_role_name = "supervisor"
+  prepare_agent = false
+  custom_prompt_configuration = {
+    "default" = {
+      prompt_configurations = var.orchestration_prompt_configurations
+    }
+  }
+  environment = "dev"
+  agent_collaboration = "SUPERVISOR"
+  tags = {
+    Name = "my-ai-agent-supervisor"
+    "${local.project_name}-env" = "${local.project_name}-resource"
+  }
+  depends_on = [
+    module.ai_agent_web_search,
+    module.ai_agent_writer
+  ]
+}
+
+module "ai_agent_web_search" {
+  source = "./modules/ai-agent"
+  project_name = local.project_name
+  foundation_model = var.foundation_model
+  instruction = var.instruction_web_search
+  agent_role_arn = module.agent_iam.agent_role_arn
+  agent_role_name = "web-search"  
+  environment = "dev"  
+  tags = {
+    Name = "my-ai-agent-web-search"
+    "${local.project_name}-env" = "${local.project_name}-resource"
+  }
+}
+
+module "ai_agent_writer" {
+  source = "./modules/ai-agent"
+  project_name = local.project_name
+  foundation_model = var.foundation_model
+  instruction = var.instruction_writer
+  agent_role_arn = module.agent_iam.agent_role_arn
+  agent_role_name = "writer"  
+  environment = "dev"
+  tags = {
+    Name = "my-ai-agent-writer"
+    "${local.project_name}-env" = "${local.project_name}-resource"
+  }
+}
+
+resource "aws_bedrockagent_agent_collaborator" "ax_lead_agent_search_collaborator" {
+  agent_id                   = module.ai_agent_supervisor.agent_id
+  collaboration_instruction  = var.instruction_web_search
+  collaborator_name          = "my-collab-web-search"
+  relay_conversation_history = "TO_COLLABORATOR"
+
+  agent_descriptor {
+    alias_arn = module.ai_agent_web_search.agent_alias_arn
+  }
+
+  timeouts {
+    create = "3m"
+  }
+}
+
+resource "aws_bedrockagent_agent_collaborator" "ax_lead_agent_writer_collaborator" {
+  agent_id                   = module.ai_agent_supervisor.agent_id
+  collaboration_instruction  = var.instruction_writer
+  collaborator_name          = "my-collab-writer"
+  relay_conversation_history = "TO_COLLABORATOR"
+
+  agent_descriptor {
+    alias_arn = module.ai_agent_writer.agent_alias_arn
+  }
+
+  timeouts {
+    create = "3m"
+  }
+
+  depends_on = [ aws_bedrockagent_agent_collaborator.ax_lead_agent_search_collaborator ]
 }
 
 # module "lambda_action_group" {
@@ -117,16 +166,16 @@ module "ai_agent" {
 #   }  
 # }
 
-module "return_control_action_group" {
-  source = "./modules/action-group"
-  project_name = local.project_name  
-  function_schema_name = "save_file_schema"
-  agent_id = module.ai_agent.agent_id
-  action_group_executor =[{
-    lambda = "",
-    custom_control = "RETURN_CONTROL"
-  }]
-}
+# module "return_control_action_group" {
+#   source = "./modules/action-group"
+#   project_name = local.project_name  
+#   function_schema_name = "save_file_schema"
+#   agent_id = module.ai_agent.agent_id
+#   action_group_executor =[{
+#     lambda = "",
+#     custom_control = "RETURN_CONTROL"
+#   }]
+# }
 
 # resource "aws_ecr_repository" "ecr_repository" {
 #   name = "${local.project_name}-ecr"
@@ -216,12 +265,14 @@ module "return_control_action_group" {
 
 resource "local_file" "env_file" {
   content = <<-EOT
-    AWS_SQS_QUEUE_NAME="${module.sqs.queue_name}"
-    AWS_SQS_QUEUE_URL="${module.sqs.queue_url}"
     AWS_REGION="${data.aws_region.current.name}"
     AWS_S3_BUCKET_NAME="${module.s3_bucket.bucket_name}"
-    AWS_BEDROCK_AGENT_ID="${module.ai_agent.agent_id}"
-    AWS_BEDROCK_AGENT_ALIAS_ID="${module.ai_agent.agent_alias_id}"
+    AWS_BEDROCK_SUPERVISOR_AGENT_ID="${module.ai_agent_supervisor.agent_id}"
+    AWS_BEDROCK_SUPERVISOR_AGENT_ALIAS_ID="${module.ai_agent_supervisor.agent_alias_id != null ? module.ai_agent_supervisor.agent_alias_id : ""}"
+    AWS_BEDROCK_WEB_SEARCH_AGENT_ID="${module.ai_agent_web_search.agent_id}"
+    AWS_BEDROCK_WEB_SEARCH_AGENT_ALIAS_ID="${module.ai_agent_web_search.agent_alias_id != null ? module.ai_agent_web_search.agent_alias_id : ""}"
+    AWS_BEDROCK_WRITER_AGENT_ID="${module.ai_agent_writer.agent_id}"
+    AWS_BEDROCK_WRITER_AGENT_ALIAS_ID="${module.ai_agent_writer.agent_alias_id != null ? module.ai_agent_writer.agent_alias_id : ""}"
   EOT
   filename = "${path.module}/.aws/.env"
 }
