@@ -22,10 +22,10 @@ import java.util.concurrent.TimeoutException;
 @Component
 public class AgentService {
 
-    @Value("${aws.bedrock.agent.id}")
+    @Value("${aws.bedrock.supervisor.agent.id}")
     String agentId;
 
-    @Value("${aws.bedrock.agent.alias.id}")
+    @Value("${aws.bedrock.supervisor.agent.alias.id}")
     String aliasId;
 
     private static final Logger logger = LoggerFactory.getLogger(AgentService.class);
