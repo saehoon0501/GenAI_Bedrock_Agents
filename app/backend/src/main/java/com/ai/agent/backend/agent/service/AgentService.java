@@ -1,8 +1,5 @@
 package com.ai.agent.backend.agent.service;
 
-
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,7 +18,9 @@ import com.ai.agent.backend.agent.actions.AgentActionFactory;
 import com.ai.agent.backend.constant.enums.ActionGroup;
 import com.ai.agent.backend.agent.actions.AgentAction;
 import com.ai.agent.backend.constant.enums.OperationId;
-
+import org.springframework.scheduling.annotation.Async;
+import java.security.InvalidParameterException;
+import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class AgentService {
 
@@ -31,10 +30,12 @@ public class AgentService {
     @Value("${aws.bedrock.web.agent.alias.id}")
     String aliasId;
 
-    private static final Logger logger = LoggerFactory.getLogger(AgentService.class);
-    private static final ObjectMapper objectMapper = new ObjectMapper();
+    private static final Logger logger = LoggerFactory.getLogger(AgentService.class);    
     private final BedrockAgentRuntimeAsyncClient client;
     private final AgentActionFactory agentActionFactory;
+    private String sessionId;
+
+    private final Map<String, String> sessionMap = new ConcurrentHashMap<>();
 
     public AgentService(BedrockAgentRuntimeAsyncClient client, AgentActionFactory agentActionFactory) {
         this.client = client;
@@ -42,11 +43,12 @@ public class AgentService {
     }
 
     public void invokeAgent(String input) {
+        sessionId = UUID.randomUUID().toString();
 
         InvokeAgentRequest invokeAgentRequest = InvokeAgentRequest.builder()
                 .agentId(agentId)
                 .agentAliasId(aliasId)
-                .sessionId(UUID.randomUUID().toString())
+                .sessionId(sessionId)
                 .enableTrace(true)
                 .inputText(input)
                 .build();
@@ -56,7 +58,7 @@ public class AgentService {
                     logger.info("Response Received from Agent: {}", response.toString());
                     // Process the response here
                 })
-                .onEventStream(publisher -> publisher.subscribe(this::handleEvent))
+                .onEventStream(publisher -> publisher.subscribe(event -> handleEvent(event, sessionId)))
                 .onError(error -> {
                     logger.error("Error occurred: ", error);
                 })
@@ -71,7 +73,38 @@ public class AgentService {
         }
     }
 
-    private void handleEvent(ResponseStream event) {
+    @Async("agentTaskExecutor")
+    public CompletableFuture<Void> invokeAgentAsync(String invocationId, SessionState sessionState) {        
+        InvokeAgentRequest invokeAgentRequest = InvokeAgentRequest.builder()
+                .agentId(agentId)
+                .agentAliasId(aliasId)
+                .sessionId(sessionMap.get(invocationId))
+                .sessionState(sessionState)
+                .inputText("Here is the result of the api call")
+                .build();
+
+        sessionMap.remove(invocationId);
+
+        InvokeAgentResponseHandler handler = InvokeAgentResponseHandler.builder()
+            .onResponse(response -> {
+                logger.info("Response Received from Agent: {}", response.toString());
+                // Process the response here
+            })
+            .onEventStream(publisher -> publisher.subscribe(event -> handleEvent(event, sessionMap.get(invocationId))))
+            .onError(error -> {
+                logger.error("Error occurred: ", error);
+            })
+            .build();
+
+        // Return the CompletableFuture directly instead of blocking
+        return client.invokeAgent(invokeAgentRequest, handler)
+            .exceptionally(ex -> {
+                logger.error("Error in async agent invocation: ", ex);
+                return null;
+            });
+    }
+
+    private void handleEvent(ResponseStream event, String sessionId) {
         logger.info("Completion: {}", event.sdkEventType());
         logger.info("Event: {}", event.getClass().getName());
 
@@ -84,24 +117,33 @@ public class AgentService {
             public void visitChunk(PayloadPart event) {
                 logger.info("[visitChunk] - {}", event.toString());
                 String payloadAsString = event.bytes().asUtf8String();
-                logger.info("Chunked Data = {}", payloadAsString);
+                logger.info("Chunked Data = {}", payloadAsString);                
             }
 
             @Override
             public void visitReturnControl(ReturnControlPayload event) {
                 logger.info("[visitReturnControl] - {}", event);
-                var payload = event.invocationInputs();
-                // if (payload.isEmpty() ||
-                //     payload.get(0).apiInvocationInput().requestBody().content() == null) {                                
-                //         throw new InvalidParameterException("Payload is null");
-                // }
+                sessionMap.put(event.invocationId(), sessionId);                
+                var payload = event.invocationInputs();                
+                if (payload.isEmpty() ||
+                    payload.get(0).apiInvocationInput().requestBody().content() == null) {                                
+                        throw new InvalidParameterException("Payload is null");
+                }
                 try{
                     ActionGroup actionGroup = BedrockUtils.getActionGroup(payload);
                     OperationId operationId = BedrockUtils.getOperationId(payload);
                     List<Parameter> functionParameters = BedrockUtils.getFunctionParameters(payload);                    
                     
-                    AgentAction action = agentActionFactory.createAction(actionGroup);
-                    action.execute(operationId, functionParameters);
+                    AgentAction<List<String>> action = agentActionFactory.createAction(actionGroup);
+                    var result = action.execute(operationId, functionParameters);
+
+                    if(result != null){                        
+                        // Build the SessionState object
+                        SessionState sessionState = BedrockUtils.getSessionStateMap(event, result.toString());
+                            
+                        // Call the async method without waiting for it to complete
+                        invokeAgentAsync(event.invocationId(), sessionState);
+                    }
                 }catch(Exception e){
                     logger.error("Error: {}", e);
                     throw new RuntimeException("Error executing action: " + e.getMessage());

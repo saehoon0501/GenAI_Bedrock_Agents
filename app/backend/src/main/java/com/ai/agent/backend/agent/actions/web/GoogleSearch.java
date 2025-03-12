@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 @Component
-public class GoogleSearch implements WebSearch<String, GoogleSearchResponse>, AgentAction<GoogleSearchResponse>{
+public class GoogleSearch implements WebSearch<String, GoogleSearchResponse>, AgentAction<List<String>>{
    
     private static final Logger logger = LoggerFactory.getLogger(GoogleSearch.class);
     private final GoogleSearchClient googleSearchClient;
@@ -39,7 +39,7 @@ public class GoogleSearch implements WebSearch<String, GoogleSearchResponse>, Ag
     }
 
     @Override
-    public GoogleSearchResponse execute(OperationId operationId, List<Parameter> parameters) {
+    public List<String> execute(OperationId operationId, List<Parameter> parameters) {
         String query = parameters.stream()
                                 .map(Parameter::value)
                                 .reduce("", (a, b) -> a + " " + b)
@@ -50,7 +50,7 @@ public class GoogleSearch implements WebSearch<String, GoogleSearchResponse>, Ag
         logger.info("Google Search Result: {}", urls);
         List<String> contents = extractContents(urls);
         logger.info("Contents: {}", contents.size());
-        return result;
+        return contents;
     }
 
     private List<String> extractContents(List<String> urls) {
