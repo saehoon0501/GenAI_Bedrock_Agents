@@ -6,6 +6,6 @@ import com.ai.agent.backend.constant.enums.OperationId;
 
 import software.amazon.awssdk.services.bedrockagentruntime.model.Parameter;
 
-public interface AgentAction {
-    public void execute(OperationId operationId, List<Parameter> parameters);
+public interface AgentAction<T> {
+    public T execute(OperationId operationId, List<Parameter> parameters);
 }
