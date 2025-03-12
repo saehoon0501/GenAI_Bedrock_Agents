@@ -16,27 +16,32 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-
-
+import com.ai.agent.backend.utility.BedrockUtils;
+import com.ai.agent.backend.agent.actions.AgentActionFactory;
+import com.ai.agent.backend.constant.enums.ActionGroup;
+import com.ai.agent.backend.agent.actions.AgentAction;
+import com.ai.agent.backend.constant.enums.OperationId;
 
 @Component
 public class AgentService {
 
-    @Value("${aws.bedrock.supervisor.agent.id}")
+    @Value("${aws.bedrock.web.agent.id}")
     String agentId;
 
-    @Value("${aws.bedrock.supervisor.agent.alias.id}")
+    @Value("${aws.bedrock.web.agent.alias.id}")
     String aliasId;
 
     private static final Logger logger = LoggerFactory.getLogger(AgentService.class);
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private final BedrockAgentRuntimeAsyncClient client;
+    private final AgentActionFactory agentActionFactory;
 
-    public AgentService(BedrockAgentRuntimeAsyncClient client) {
+    public AgentService(BedrockAgentRuntimeAsyncClient client, AgentActionFactory agentActionFactory) {
         this.client = client;
+        this.agentActionFactory = agentActionFactory;
     }
 
-    public void generateContent(String input) {
+    public void invokeAgent(String input) {
 
         InvokeAgentRequest invokeAgentRequest = InvokeAgentRequest.builder()
                 .agentId(agentId)
@@ -84,42 +89,28 @@ public class AgentService {
 
             @Override
             public void visitReturnControl(ReturnControlPayload event) {
-                logger.info("[visitReturnControl] - {}", event.invocationInputs());
-                extractParameters(event.invocationInputs());
+                logger.info("[visitReturnControl] - {}", event);
+                var payload = event.invocationInputs();
+                // if (payload.isEmpty() ||
+                //     payload.get(0).apiInvocationInput().requestBody().content() == null) {                                
+                //         throw new InvalidParameterException("Payload is null");
+                // }
+                try{
+                    ActionGroup actionGroup = BedrockUtils.getActionGroup(payload);
+                    OperationId operationId = BedrockUtils.getOperationId(payload);
+                    List<Parameter> functionParameters = BedrockUtils.getFunctionParameters(payload);                    
+                    
+                    AgentAction action = agentActionFactory.createAction(actionGroup);
+                    action.execute(operationId, functionParameters);
+                }catch(Exception e){
+                    logger.error("Error: {}", e);
+                    throw new RuntimeException("Error executing action: " + e.getMessage());
+                }
             }
-
             @Override
             public void visitTrace(TracePart event) {
                 logger.info("[visitTrace] - {}", event.toString());
             }
         });
-    }
-
-    public static Map<String, String> extractParameters(List<InvocationInputMember> payload) {
-        Map<String, String> extractedParams = new HashMap<>();
-
-//        try {
-            // Convert payload bytes to JSON string
-            String jsonPayload = payload.get(0).apiInvocationInput().requestBody().content().toString();
-            logger.info("Received ReturnControlPayload: {}", payload.get(0).apiInvocationInput().requestBody().content());
-
-            // Parse JSON
-//            JsonNode rootNode = objectMapper.readTree(jsonPayload);
-
-//            // Extract key-value parameters
-//            JsonNode parametersNode = rootNode.path("parameters");
-//            if (parametersNode.isObject()) {
-//                Iterator<Map.Entry<String, JsonNode>> fields = parametersNode.fields();
-//                while (fields.hasNext()) {
-//                    Map.Entry<String, JsonNode> entry = fields.next();
-//                    extractedParams.put(entry.getKey(), entry.getValue().asText());
-//                }
-//            }
-
-//        } catch (IOException e) {
-//            logger.error("Error parsing ReturnControlPayload", e);
-//        }
-
-        return extractedParams;
     }
 }

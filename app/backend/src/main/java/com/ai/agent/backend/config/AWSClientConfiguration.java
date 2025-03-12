@@ -7,8 +7,6 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.bedrockagentruntime.BedrockAgentRuntimeAsyncClient;
 
-import software.amazon.awssdk.services.sqs.SqsAsyncClient;
-
 @Configuration
 public class AWSClientConfiguration {
 

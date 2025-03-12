@@ -155,6 +155,15 @@ resource "aws_bedrockagent_agent_collaborator" "ax_lead_agent_writer_collaborato
   depends_on = [ aws_bedrockagent_agent_collaborator.ax_lead_agent_search_collaborator ]
 }
 
+
+resource "aws_bedrockagent_agent_alias" "agent_alias" {  
+  agent_alias_name = "${local.project_name}-agent-${var.environment}-supervisor"
+  agent_id = module.ai_agent_supervisor.agent_id
+  description = "Alias for the ${var.environment} agent"
+
+  depends_on = [ aws_bedrockagent_agent_collaborator.ax_lead_agent_writer_collaborator ]
+}
+
 # module "lambda_action_group" {
 #   source = "./modules/action_group"
 #   project_name = local.project_name
@@ -268,7 +277,7 @@ resource "local_file" "env_file" {
     AWS_REGION="${data.aws_region.current.name}"
     AWS_S3_BUCKET_NAME="${module.s3_bucket.bucket_name}"
     AWS_BEDROCK_SUPERVISOR_AGENT_ID="${module.ai_agent_supervisor.agent_id}"
-    AWS_BEDROCK_SUPERVISOR_AGENT_ALIAS_ID="${module.ai_agent_supervisor.agent_alias_id != null ? module.ai_agent_supervisor.agent_alias_id : ""}"
+    AWS_BEDROCK_SUPERVISOR_AGENT_ALIAS_ID="${aws_bedrockagent_agent_alias.agent_alias.id}"
     AWS_BEDROCK_WEB_SEARCH_AGENT_ID="${module.ai_agent_web_search.agent_id}"
     AWS_BEDROCK_WEB_SEARCH_AGENT_ALIAS_ID="${module.ai_agent_web_search.agent_alias_id != null ? module.ai_agent_web_search.agent_alias_id : ""}"
     AWS_BEDROCK_WRITER_AGENT_ID="${module.ai_agent_writer.agent_id}"
