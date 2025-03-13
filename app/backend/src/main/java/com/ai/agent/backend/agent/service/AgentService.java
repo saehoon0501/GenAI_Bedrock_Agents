@@ -80,7 +80,6 @@ public class AgentService {
                 .agentAliasId(aliasId)
                 .sessionId(sessionMap.get(invocationId))
                 .sessionState(sessionState)
-                .inputText("Here is the result of the api call")
                 .build();
 
         sessionMap.remove(invocationId);
@@ -98,6 +97,7 @@ public class AgentService {
 
         // Return the CompletableFuture directly instead of blocking
         return client.invokeAgent(invokeAgentRequest, handler)
+            .orTimeout(300, TimeUnit.SECONDS)
             .exceptionally(ex -> {
                 logger.error("Error in async agent invocation: ", ex);
                 return null;
