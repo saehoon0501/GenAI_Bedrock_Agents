@@ -10,8 +10,6 @@ import software.amazon.awssdk.services.bedrockagentruntime.model.*;
 import java.util.stream.Collectors;
 import java.util.Map;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class BedrockUtils {    
 
@@ -32,6 +30,10 @@ public class BedrockUtils {
     public static ActionGroup getActionGroup(List<InvocationInputMember> payload) {
         String actionGroupName = payload.get(0).apiInvocationInput().actionGroup();
         return ActionGroup.valueOf(actionGroupName);               
+    }
+
+    public static String getAgentId(List<InvocationInputMember> payload){        
+        return payload.get(0).apiInvocationInput().agentId();
     }
 
     public static OperationId getOperationId(List<InvocationInputMember> payload) {
@@ -64,6 +66,7 @@ public class BedrockUtils {
      *     "apiResult": {
      *       "actionGroup": "WeatherAPIs",
      *       "httpMethod": "get",
+     *       "agentId": "abc123"
      *       "apiPath": "/get-weather",
      *       "responseBody": {
      *         "application/json": {
@@ -86,6 +89,7 @@ public class BedrockUtils {
                 
                 // Get API information
                 String actionGroup = payload.get(0).apiInvocationInput().actionGroup();
+                String collaboratorAgentId = getAgentId(payload);
                 String httpMethod = payload.get(0).apiInvocationInput().httpMethod();
                 // String apiPath = payload.get(0).apiInvocationInput().apiPath();                                          
                 
@@ -100,6 +104,7 @@ public class BedrockUtils {
 
                 ApiResult apiResult = ApiResult.builder()
                                                 .actionGroup(actionGroup)
+                                                .agentId(collaboratorAgentId)
                                                 .httpMethod(httpMethod)
                                                 .apiPath("/api/web/search")   
                                                 .responseBody(responseBody)       

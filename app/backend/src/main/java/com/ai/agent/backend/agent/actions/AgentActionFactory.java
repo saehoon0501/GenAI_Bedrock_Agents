@@ -1,13 +1,6 @@
 package com.ai.agent.backend.agent.actions;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.springframework.web.multipart.MultipartFile;
-import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
-
-import java.io.IOException;
 
 import com.ai.agent.backend.constant.enums.ActionGroup;
 
@@ -24,10 +17,11 @@ public class AgentActionFactory implements ApplicationContextAware{
         this.applicationContext = applicationContext;
     }
 
-    public AgentAction createAction(ActionGroup actionGroup) {
+    @SuppressWarnings("unchecked")
+    public <T> AgentAction<T> createAction(ActionGroup actionGroup) {
         switch (actionGroup) {
-            case WEB_SEARCH:
-                return applicationContext.getBean(GoogleSearch.class);
+            case WEB_SEARCH:                
+                return (AgentAction<T>) applicationContext.getBean(GoogleSearch.class);
             case WRITER:
                 return null;
             default:

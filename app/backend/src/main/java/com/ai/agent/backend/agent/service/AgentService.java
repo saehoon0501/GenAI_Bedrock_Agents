@@ -24,10 +24,10 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class AgentService {
 
-    @Value("${aws.bedrock.web.agent.id}")
+    @Value("${aws.bedrock.supervisor.agent.id}")
     String agentId;
 
-    @Value("${aws.bedrock.web.agent.alias.id}")
+    @Value("${aws.bedrock.supervisor.agent.alias.id}")
     String aliasId;
 
     private static final Logger logger = LoggerFactory.getLogger(AgentService.class);    
@@ -123,7 +123,7 @@ public class AgentService {
             @Override
             public void visitReturnControl(ReturnControlPayload event) {
                 logger.info("[visitReturnControl] - {}", event);
-                sessionMap.put(event.invocationId(), sessionId);                
+                sessionMap.put(event.invocationId(), sessionId);
                 var payload = event.invocationInputs();                
                 if (payload.isEmpty() ||
                     payload.get(0).apiInvocationInput().requestBody().content() == null) {                                
@@ -139,8 +139,7 @@ public class AgentService {
 
                     if(result != null){                        
                         // Build the SessionState object
-                        SessionState sessionState = BedrockUtils.getSessionStateMap(event, result.toString());
-                            
+                        SessionState sessionState = BedrockUtils.getSessionStateMap(event, result.toString());                        
                         // Call the async method without waiting for it to complete
                         invokeAgentAsync(event.invocationId(), sessionState);
                     }

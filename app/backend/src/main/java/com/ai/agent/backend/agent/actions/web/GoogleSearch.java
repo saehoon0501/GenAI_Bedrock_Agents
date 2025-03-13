@@ -39,19 +39,29 @@ public class GoogleSearch implements WebSearch<String, GoogleSearchResponse>, Ag
     }
 
     @Override
-    public List<String> execute(OperationId operationId, List<Parameter> parameters) {
-        String query = parameters.stream()
-                                .map(Parameter::value)
-                                .reduce("", (a, b) -> a + " " + b)
-                                .trim();
-        
-        GoogleSearchResponse result = search(query);
+    public List<String> execute(OperationId operationId, List<Parameter> parameters) {               
+        GoogleSearchResponse result = executeBasedOnOperationId(operationId, parameters);
         List<String> urls = GoogleSearchUtils.extractLinks(result);
         logger.info("Google Search Result: {}", urls);
+        
         List<String> contents = extractContents(urls);
         logger.info("Contents: {}", contents.size());
         return contents;
     }
+
+    private GoogleSearchResponse executeBasedOnOperationId(OperationId operationId, List<Parameter> parameters){
+        switch (operationId) {
+            case SEARCH_WEB_CONTENT:
+                String query = parameters.stream()
+                                            .map(Parameter::value)
+                                            .reduce("", (a, b) -> a + " " + b)
+                                            .trim();
+                return search(query);
+            default:
+                return null;                
+        }
+    }
+
 
     private List<String> extractContents(List<String> urls) {
         return urls.stream()

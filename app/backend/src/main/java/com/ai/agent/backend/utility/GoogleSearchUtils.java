@@ -3,6 +3,9 @@ package com.ai.agent.backend.utility;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Arrays;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,17 +42,29 @@ public class GoogleSearchUtils {
     }
     
     /**
-     * Extracts a list of URLs from a comma-separated string
+     * Extracts a list of URLs from a comma-separated string, filtering for URLs with path depth > 0
      * 
      * @param urlsString Comma-separated list of URLs
-     * @return List of URL strings
+     * @return List of URL strings with at least one path segment
      */
-    public static List<String> extractUrls(String urlsString) {
+    public static List<String> extractUrlsWithPath(String urlsString) {
         if (urlsString == null || urlsString.isEmpty()) {
             return new ArrayList<>();
         }
         
-        return List.of(urlsString.split(","));
+        return Arrays.stream(urlsString.split(","))
+            .map(String::trim)
+            .filter(url -> {
+                try {
+                    URI uri = new URI(url);
+                    String path = uri.getPath();
+                    // Check if path has content beyond just "/"
+                    return path != null && path.length() > 1;
+                } catch (URISyntaxException e) {
+                    return false;
+                }
+            })
+            .collect(Collectors.toList());
     }
     
     /**
