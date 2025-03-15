@@ -56,7 +56,7 @@ public class OpenApiRequestResolver implements HandlerMethodArgumentResolver {
             if (conversionService.canConvert(String.class, targetType)) {
                 return conversionService.convert(openApiParameter.value(), targetType);
             } else {
-                throw new ParameterConversionException("No converter found from List<Parameter> to " + targetType.getName());
+                throw new ParameterConversionException("No converter found from Parameter to " + targetType.getName());
             }            
         } catch (Exception e) {            
             logger.warn("Failed to convert parameter to {}, returning null", targetType.getName(), e);
