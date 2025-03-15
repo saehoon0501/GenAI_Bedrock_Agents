@@ -1,0 +1,64 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+      "title": "API for image generation",
+      "description": "API for image generation.",
+      "version": "1.0.0"
+    },
+    "paths": {
+      "/image/generate": {
+        "post": {
+          "summary": "generate a image based on the prompt",
+          "description": "Generates a image based on the prompt. The base64 encoded image is returned.",
+          "operationId": "GENERATE_IMAGE",
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "prompt": {
+                      "type": "string",
+                      "description": "Prompt to generate a image"
+                    }
+                  },
+                  "required": ["prompt"]
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "Successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "base64Image": {
+                        "type": "string",
+                        "description": "Base64 encoded image"
+                      },
+                      "dataType": {
+                        "type": "string",
+                        "description": "Data type of the image"
+                      }
+                    },
+                    "required": ["base64Image", "dataType"]
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid query parameter"
+            },
+            "500": {
+              "description": "Internal server error"
+            }
+          }
+        }
+      }
+    }
+  }
+  

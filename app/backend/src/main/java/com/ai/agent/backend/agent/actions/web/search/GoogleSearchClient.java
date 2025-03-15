@@ -12,7 +12,7 @@ import java.io.IOException;
 public class GoogleSearchClient {
     private final RestClient googleSearchClient;
     private static final Logger logger = LoggerFactory.getLogger(GoogleSearchClient.class);
-    private final ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public GoogleSearchClient(String googleSearchApiKey, String googleSearchEngineId) {
         String endpoint = String.format("https://www.googleapis.com/customsearch/v1?key=%s&cx=%s",
@@ -23,9 +23,7 @@ public class GoogleSearchClient {
         this.googleSearchClient = RestClient.builder()
         .baseUrl(endpoint)
         .defaultHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-        .build();
-        
-        this.objectMapper = new ObjectMapper();
+        .build();        
     }
 
     /**

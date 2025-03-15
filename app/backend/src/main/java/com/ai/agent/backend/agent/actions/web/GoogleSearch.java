@@ -2,11 +2,10 @@ package com.ai.agent.backend.agent.actions.web;
 
 import com.ai.agent.backend.agent.actions.web.search.GoogleSearchClient;
 import com.ai.agent.backend.model.GoogleSearchResponse;
-import software.amazon.awssdk.services.bedrockagentruntime.model.Parameter;
-
+import com.ai.agent.backend.model.AgentResponse;
 import com.ai.agent.backend.agent.actions.web.parser.JsoupParserClient;
 import com.ai.agent.backend.agent.actions.AgentAction;
-import com.ai.agent.backend.constant.enums.OperationId;
+
 import java.util.List;
 import java.io.IOException;
 import com.ai.agent.backend.utility.GoogleSearchUtils;
@@ -17,7 +16,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 @Component
-public class GoogleSearch implements WebSearch<String, GoogleSearchResponse>, AgentAction<List<String>>{
+public class GoogleSearch extends AgentAction implements WebSearch<String, GoogleSearchResponse> {
    
     private static final Logger logger = LoggerFactory.getLogger(GoogleSearch.class);
     private final GoogleSearchClient googleSearchClient;
@@ -37,31 +36,34 @@ public class GoogleSearch implements WebSearch<String, GoogleSearchResponse>, Ag
             return null;
         }
     }
-
-    @Override
-    public List<String> execute(OperationId operationId, List<Parameter> parameters) {               
-        GoogleSearchResponse result = executeBasedOnOperationId(operationId, parameters);
+    
+    /**
+     * Handle search web content requests using the @OpenApiRequest annotation.
+     * The framework will automatically convert the Parameters to SearchWebContentRequest.
+     * 
+     * @param request the automatically converted request object
+     * @param parameters the original parameters (for reference if needed)
+     * @return the agent response
+     */
+    public AgentResponse handleSearchWebContent(String query) {
+        
+        logger.info("Handling search web content request with query: {}", query);
+        
+        // Execute the search using the query from the converted request
+        GoogleSearchResponse result = search(query);
+        
+        // Process the result
+        if (result == null) {
+            return AgentResponse.stringifyJson(List.of("No search results found"));
+        }
+        
         List<String> urls = GoogleSearchUtils.extractLinks(result);
         logger.info("Google Search Result: {}", urls);
         
         List<String> contents = extractContents(urls);
         logger.info("Contents: {}", contents.size());
-        return contents;
+        return AgentResponse.stringifyJson(contents);
     }
-
-    private GoogleSearchResponse executeBasedOnOperationId(OperationId operationId, List<Parameter> parameters){
-        switch (operationId) {
-            case SEARCH_WEB_CONTENT:
-                String query = parameters.stream()
-                                            .map(Parameter::value)
-                                            .reduce("", (a, b) -> a + " " + b)
-                                            .trim();
-                return search(query);
-            default:
-                return null;                
-        }
-    }
-
 
     private List<String> extractContents(List<String> urls) {
         return urls.stream()

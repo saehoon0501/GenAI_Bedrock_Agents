@@ -2,7 +2,10 @@ package com.ai.agent.backend.constant.enums;
 
 public enum ActionGroup {
     WEB_SEARCH("web_search"),
-    WRITER("writer");
+    
+    SAVE("save"),
+
+    IMAGE_GENERATION("image_generation");
 
     private final String value;
 
