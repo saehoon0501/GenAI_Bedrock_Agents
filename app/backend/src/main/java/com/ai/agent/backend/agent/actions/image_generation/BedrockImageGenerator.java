@@ -48,17 +48,12 @@ public class BedrockImageGenerator extends AgentAction implements ImageGenerator
             // Save the binary data instead of the raw base64 string
             var result = saveClient.handleSaveByteContent(imageKey, imageBytes, imageResponse.getContentType());
 
-            if(result.sdkHttpResponse().statusCode() != 200) {
+            if(result.getStatusCode() != 200) {
                 throw new RuntimeException("Failed to save image to S3");
             }        
             
-            // Construct the S3 URL using the region-specific endpoint format                        
-            if (region != null) {
-                // For regions other than us-east-1, include the region in the URL
-                return String.format("https://%s.s3.%s.amazonaws.com/%s", bucketName, region, imageKey);
-            }
-            
-            return null;
+            // Return the URL from the SaveResponse
+            return result.getUrl();
         } catch (Exception e) {
             logger.error("Error generating image: {}", e.getMessage());
             throw new RuntimeException("Failed to generate image", e);

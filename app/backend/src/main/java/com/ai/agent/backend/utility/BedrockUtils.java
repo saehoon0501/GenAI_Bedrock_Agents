@@ -39,6 +39,7 @@ public class BedrockUtils {
     }
 
     public static OperationId getOperationId(List<InvocationInputMember> payload) {
+        var loperationId = payload.get(0).apiInvocationInput().apiPath();
         return Arrays.stream(OperationId.values())
             .filter(
                 operationId -> operationId.getValue().equals(payload.get(0).apiInvocationInput().apiPath())

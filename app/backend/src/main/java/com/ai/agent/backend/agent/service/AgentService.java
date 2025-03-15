@@ -28,10 +28,10 @@ import com.ai.agent.backend.model.AgentResponse;
 @Component
 public class AgentService {
 
-    @Value("${aws.bedrock.writer.agent.id}")
+    @Value("${aws.bedrock.supervisor.agent.id}")
     String agentId;
 
-    @Value("${aws.bedrock.writer.agent.alias.id}")
+    @Value("${aws.bedrock.supervisor.agent.alias.id}")
     String aliasId;
 
     private static final Logger logger = LoggerFactory.getLogger(AgentService.class);    
