@@ -5,9 +5,8 @@ import com.ai.agent.backend.open_api.parameter.OpenApiRequestResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.MethodParameter;
-import org.springframework.core.annotation.AnnotationUtils;
+import org.springframework.core.StandardReflectionParameterNameDiscoverer;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.RequestParam;
 import software.amazon.awssdk.services.bedrockagentruntime.model.Parameter;
 
 import java.lang.reflect.Method;
@@ -24,29 +23,35 @@ public class OpenApiMethodInvoker {
 
     private static final Logger logger = LoggerFactory.getLogger(OpenApiMethodInvoker.class);
     private final OpenApiRequestResolver openApiRequestResolver;
+    private final StandardReflectionParameterNameDiscoverer parameterNameDiscoverer;
     
     public OpenApiMethodInvoker(OpenApiRequestResolver openApiRequestResolver) {
         this.openApiRequestResolver = openApiRequestResolver;
+        this.parameterNameDiscoverer = new StandardReflectionParameterNameDiscoverer();
     }
     
     /**
      * Get parameter name using multiple strategies, including annotation-based discovery.
      */
     private String getParameterName(MethodParameter methodParam, int paramIndex) {
-        String paramName = methodParam.getParameterName();
+        // Use StandardReflectionParameterNameDiscoverer to get parameter names
+        Method method = methodParam.getMethod();
+        String[] parameterNames = parameterNameDiscoverer.getParameterNames(method);
         
-        // If parameter name is available from reflection, use it
-        if (paramName != null) {
-            logger.info("Parameter name from reflection: {}", paramName);
-            return paramName;
-        }        
+        // If parameter names are available from reflection, use them
+        if (parameterNames != null && paramIndex < parameterNames.length) {
+            String paramName = parameterNames[paramIndex];
+            if (paramName != null) {
+                logger.info("Parameter name from StandardReflectionParameterNameDiscoverer: {}", paramName);
+                return paramName;
+            }
+        }
         
         // Try Java 8's Parameter API as a fallback
         try {
-            Method method = methodParam.getMethod();
             java.lang.reflect.Parameter[] parameters = method.getParameters();
             if (paramIndex < parameters.length && parameters[paramIndex].isNamePresent()) {
-                paramName = parameters[paramIndex].getName();
+                String paramName = parameters[paramIndex].getName();
                 logger.info("Parameter name from Java Parameter API: {}", paramName);
                 return paramName;
             }
