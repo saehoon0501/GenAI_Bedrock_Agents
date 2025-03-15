@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.scheduling.annotation.Async;
 
 import software.amazon.awssdk.services.bedrockagentruntime.BedrockAgentRuntimeAsyncClient;
 import software.amazon.awssdk.services.bedrockagentruntime.model.*;
@@ -13,21 +14,24 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.security.InvalidParameterException;
+import java.util.concurrent.ConcurrentHashMap;
+
 import com.ai.agent.backend.utility.BedrockUtils;
 import com.ai.agent.backend.agent.actions.AgentActionFactory;
 import com.ai.agent.backend.constant.enums.ActionGroup;
 import com.ai.agent.backend.agent.actions.AgentAction;
 import com.ai.agent.backend.constant.enums.OperationId;
-import org.springframework.scheduling.annotation.Async;
-import java.security.InvalidParameterException;
-import java.util.concurrent.ConcurrentHashMap;
+import com.ai.agent.backend.model.AgentResponse;
+
+
 @Component
 public class AgentService {
 
-    @Value("${aws.bedrock.supervisor.agent.id}")
+    @Value("${aws.bedrock.web.agent.id}")
     String agentId;
 
-    @Value("${aws.bedrock.supervisor.agent.alias.id}")
+    @Value("${aws.bedrock.web.agent.alias.id}")
     String aliasId;
 
     private static final Logger logger = LoggerFactory.getLogger(AgentService.class);    
@@ -132,14 +136,16 @@ public class AgentService {
                 try{
                     ActionGroup actionGroup = BedrockUtils.getActionGroup(payload);
                     OperationId operationId = BedrockUtils.getOperationId(payload);
-                    List<Parameter> functionParameters = BedrockUtils.getFunctionParameters(payload);                    
+                    List<Parameter> functionParameters = BedrockUtils.getFunctionParameters(payload);
                     
-                    AgentAction<List<String>> action = agentActionFactory.createAction(actionGroup);
-                    var result = action.execute(operationId, functionParameters);
+                    AgentAction action = agentActionFactory.createAction(actionGroup);
+                    AgentResponse jsonStringResult = action.execute(operationId, functionParameters);
 
-                    if(result != null){                        
+                    logger.info("{} API Result: {}", operationId, jsonStringResult);
+
+                    if(jsonStringResult != null){
                         // Build the SessionState object
-                        SessionState sessionState = BedrockUtils.getSessionStateMap(event, result.toString());                        
+                        SessionState sessionState = BedrockUtils.getSessionStateMap(event, jsonStringResult);
                         // Call the async method without waiting for it to complete
                         invokeAgentAsync(event.invocationId(), sessionState);
                     }
@@ -148,6 +154,7 @@ public class AgentService {
                     throw new RuntimeException("Error executing action: " + e.getMessage());
                 }
             }
+
             @Override
             public void visitTrace(TracePart event) {
                 logger.info("[visitTrace] - {}", event.toString());

@@ -2,16 +2,22 @@ package com.ai.agent.backend.utility;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.security.InvalidParameterException;
-
-import com.ai.agent.backend.constant.enums.ActionGroup;
-import com.ai.agent.backend.constant.enums.OperationId;
-import software.amazon.awssdk.services.bedrockagentruntime.model.*;
 import java.util.stream.Collectors;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Arrays;
+import java.security.InvalidParameterException;
+
+import com.ai.agent.backend.model.AgentResponse;
+import com.ai.agent.backend.constant.enums.ActionGroup;
+import com.ai.agent.backend.constant.enums.OperationId;
+
+import software.amazon.awssdk.services.bedrockagentruntime.model.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class BedrockUtils {    
+    private static final Logger logger = LoggerFactory.getLogger(BedrockUtils.class);
 
     private static List<Parameter> getApiParameters(List<InvocationInputMember> payload) throws InvalidParameterException {
         List<Parameter> parameters = new ArrayList<>();
@@ -32,20 +38,13 @@ public class BedrockUtils {
         return ActionGroup.valueOf(actionGroupName);               
     }
 
-    public static String getAgentId(List<InvocationInputMember> payload){        
-        return payload.get(0).apiInvocationInput().agentId();
-    }
-
     public static OperationId getOperationId(List<InvocationInputMember> payload) {
-        List<Parameter> parameters = getApiParameters(payload);
-        return parameters.stream()
-                .filter(
-                    parameter -> parameter.name().equals("operationId")
-                )
-                .findFirst()
-                .map(Parameter::value)
-                .map(OperationId::valueOf)
-                .orElseThrow(() -> new InvalidParameterException("OperationId not found"));
+        return Arrays.stream(OperationId.values())
+            .filter(
+                operationId -> operationId.getValue().equals(payload.get(0).apiInvocationInput().apiPath())
+            )
+            .findFirst()
+            .orElseThrow(() -> new InvalidParameterException("Invalid api path"));
     }
 
     public static List<Parameter> getFunctionParameters(List<InvocationInputMember> payload) {
@@ -80,24 +79,24 @@ public class BedrockUtils {
      * @param event The ReturnControlPayload event
      * @return A map representing the session state as strings
      */
-    public static SessionState getSessionStateMap(ReturnControlPayload event, String result) {         
+    public static SessionState getSessionStateMap(ReturnControlPayload event, AgentResponse result) {         
         SessionState sessionState = null;
         try {                                    
             // Get payload information
             List<InvocationInputMember> payload = event.invocationInputs();
             if (payload != null && !payload.isEmpty()) {                
-                
+                ApiInvocationInput apiInvocationInput = payload.get(0).apiInvocationInput();
                 // Get API information
-                String actionGroup = payload.get(0).apiInvocationInput().actionGroup();
-                String collaboratorAgentId = getAgentId(payload);
-                String httpMethod = payload.get(0).apiInvocationInput().httpMethod();
-                // String apiPath = payload.get(0).apiInvocationInput().apiPath();                                          
+                String actionGroup = apiInvocationInput.actionGroup();
+                String collaboratorAgentId = apiInvocationInput.agentId();
+                String httpMethod = apiInvocationInput.httpMethod();
+                String apiPath = apiInvocationInput.apiPath();
                 
                 // Create responseBody structure
                 Map<String, ContentBody> responseBody = new HashMap<>();
                 
                 ContentBody applicationJson = ContentBody.builder()
-                                                            .body(result)
+                                                            .body(result.getJsonResultString())
                                                             .build();
 
                 responseBody.put("application/json", applicationJson);
@@ -106,7 +105,7 @@ public class BedrockUtils {
                                                 .actionGroup(actionGroup)
                                                 .agentId(collaboratorAgentId)
                                                 .httpMethod(httpMethod)
-                                                .apiPath("/api/web/search")   
+                                                .apiPath(apiPath)   
                                                 .responseBody(responseBody)       
                                                 .responseState(ResponseState.REPROMPT)
                                                 .build();
