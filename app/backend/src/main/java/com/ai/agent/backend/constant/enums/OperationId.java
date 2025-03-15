@@ -5,7 +5,9 @@ public enum OperationId {
 
     GENERATE_IMAGE("/image/generate"),
     
-    SAVE_CONTENT("/save/content"),
+    SAVE_STRING_CONTENT("/save/string-content"),
+    
+    SAVE_BYTE_CONTENT("/save/byte-content"),
 
     UNKNOWN("");
 

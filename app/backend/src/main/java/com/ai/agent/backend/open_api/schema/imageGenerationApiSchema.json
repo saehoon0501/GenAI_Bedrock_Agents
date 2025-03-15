@@ -36,16 +36,12 @@
                   "schema": {
                     "type": "object",
                     "properties": {
-                      "base64Image": {
+                      "url": {
                         "type": "string",
-                        "description": "Base64 encoded image"
-                      },
-                      "dataType": {
-                        "type": "string",
-                        "description": "Data type of the image"
+                        "description": "URL of the image"
                       }
                     },
-                    "required": ["base64Image", "dataType"]
+                    "required": ["url"]
                   }
                 }
               }

@@ -1,7 +1,7 @@
 package com.ai.agent.backend.model;
 
 public final class BedrockImageGeneratorResponse {
-    private String imageUrl;
+    private String imageBase64;
     private String contentType;
 
     private BedrockImageGeneratorResponse() {
@@ -12,14 +12,14 @@ public final class BedrockImageGeneratorResponse {
     }
 
     public static final class BedrockImageGeneratorResponseBuilder {
-        private String imageUrl;
+        private String imageBase64;
         private String contentType;
 
         private BedrockImageGeneratorResponseBuilder() {
         }
 
-        public BedrockImageGeneratorResponse.BedrockImageGeneratorResponseBuilder imageUrl(String imageUrl) {
-            this.imageUrl = imageUrl;
+        public BedrockImageGeneratorResponse.BedrockImageGeneratorResponseBuilder imageBase64(String imageBase64) {
+            this.imageBase64 = imageBase64;
             return this;
         }
 
@@ -30,9 +30,17 @@ public final class BedrockImageGeneratorResponse {
 
         public BedrockImageGeneratorResponse build() {
             BedrockImageGeneratorResponse response = new BedrockImageGeneratorResponse();
-            response.imageUrl = this.imageUrl;
+            response.imageBase64 = this.imageBase64;
             response.contentType = this.contentType;
             return response;
         }
     }
+
+    public String getImageBase64() {
+        return imageBase64;
+    }
+
+    public String getContentType() {
+        return contentType;
+    }   
 }

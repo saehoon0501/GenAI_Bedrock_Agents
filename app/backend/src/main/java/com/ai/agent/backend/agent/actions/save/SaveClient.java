@@ -21,7 +21,7 @@ public class SaveClient extends AgentAction implements Save<PutObjectResponse> {
     }
 
     @Override
-    public PutObjectResponse handleSaveContent(String key, String content, String contentType) {
+    public PutObjectResponse handleSaveStringContent(String key, String content, String contentType) {
         return s3Client.putObject(PutObjectRequest.builder()
             .bucket(bucketName)
             .contentType(contentType)
@@ -30,7 +30,7 @@ public class SaveClient extends AgentAction implements Save<PutObjectResponse> {
     }
 
     @Override
-    public PutObjectResponse handleSaveContent(String key, byte[] content, String contentType) {
+    public PutObjectResponse handleSaveByteContent(String key, byte[] content, String contentType) {
         return s3Client.putObject(PutObjectRequest.builder()
             .bucket(bucketName)
             .contentType(contentType)

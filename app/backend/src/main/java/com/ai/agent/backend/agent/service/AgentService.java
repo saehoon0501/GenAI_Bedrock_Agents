@@ -28,10 +28,10 @@ import com.ai.agent.backend.model.AgentResponse;
 @Component
 public class AgentService {
 
-    @Value("${aws.bedrock.web.agent.id}")
+    @Value("${aws.bedrock.writer.agent.id}")
     String agentId;
 
-    @Value("${aws.bedrock.web.agent.alias.id}")
+    @Value("${aws.bedrock.writer.agent.alias.id}")
     String aliasId;
 
     private static final Logger logger = LoggerFactory.getLogger(AgentService.class);    
@@ -141,7 +141,7 @@ public class AgentService {
                     AgentAction action = agentActionFactory.createAction(actionGroup);
                     AgentResponse jsonStringResult = action.execute(operationId, functionParameters);
 
-                    logger.info("{} API Result: {}", operationId, jsonStringResult);
+                    logger.info("{} API Result: {}", operationId, jsonStringResult.getJsonResultString());
 
                     if(jsonStringResult != null){
                         // Build the SessionState object

@@ -19,7 +19,7 @@ public class AWSBedrockClientConfiguration {
     @Value("${aws.region}")
     String bedrockRegion;
 
-    private final String BEDROCK_STABLE_DIFFUSION_REGION = "us-east-1";
+    private final String BEDROCK_STABLE_DIFFUSION_REGION = "us-west-2";
     
     final int CLIENT_TIMEOUT = 600;
 

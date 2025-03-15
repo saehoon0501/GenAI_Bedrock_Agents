@@ -10,56 +10,68 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.ai.agent.backend.model.BedrockImageGeneratorResponse;
 import java.math.BigInteger;
 import java.security.SecureRandom;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
 
 @Component
 public class BedrockImageClient {
 
-    private final BedrockRuntimeClient bedrockRuntimeClient;
-    private final String MODEL_ID = "stable-diffusion-v2.1";
+    private final BedrockRuntimeClient bedrockRuntimeClient;    
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final Logger logger = LoggerFactory.getLogger(BedrockImageClient.class);
+
+    // Stable Diffusion model ID
+    private final String MODEL_ID = "stability.stable-image-core-v1:1";
 
     public BedrockImageClient(BedrockRuntimeClient bedrockRuntimeClient) {
-        this.bedrockRuntimeClient = bedrockRuntimeClient;
+        this.bedrockRuntimeClient = bedrockRuntimeClient;        
     }
         
-    public BedrockImageGeneratorResponse generateImage(String prompt) {
-        return generateImage(prompt, "comic-book", generateRandomSeed());
+    public BedrockImageGeneratorResponse generateImage(String prompt) throws Exception {
+        return generateImage(prompt, null, generateRandomSeed());
     }
     
-    public BedrockImageGeneratorResponse generateImage(String prompt, String style, BigInteger seed) {
-        // The InvokeModel API uses the model's native payload format
-        String nativeRequest = """
-                {
-                    "text_prompts": [{ "text": "%s" }],
-                    "style_preset": "%s",
-                    "seed": %s
-                }""".formatted(prompt, style, seed.toString());
-                
-        try {
-            // Encode and send the request to the Bedrock Runtime
-            var response = bedrockRuntimeClient.invokeModel(request -> request
-                    .body(SdkBytes.fromUtf8String(nativeRequest))
-                    .modelId(MODEL_ID)
+    public BedrockImageGeneratorResponse generateImage(String prompt, String style, BigInteger seed) throws Exception {
+        // Format the request using the correct format for Stable Image Core
+        String requestBody = """
+            {
+              "prompt": "%s",
+              "seed": %d
+            }
+            """.formatted(
+                prompt.replace("\"", "\\\""),
+                seed
             );
+        
+        logger.info("Sending request to Bedrock: {}", requestBody);
+        
+        // Encode and send the request to the Bedrock Runtime
+        InvokeModelResponse response = bedrockRuntimeClient.invokeModel(request -> request
+                .body(SdkBytes.fromUtf8String(requestBody))
+                .modelId(MODEL_ID)
+                .accept("application/json")
+                .contentType("application/json")
+        );
 
-            // Decode the response body
-            ObjectMapper objectMapper = new ObjectMapper();
-            JsonNode responseBody = objectMapper.readTree(response.body().asUtf8String());
-
-            // Retrieve the generated image data from the model's response
-            String base64ImageData = responseBody.at("/artifacts/0/base64").asText();
-            String contentType = response.contentType();
-
+        // Decode the response body
+        String responseBodyStr = response.body().asUtf8String();            
+        JsonNode responseBody = objectMapper.readTree(responseBodyStr);
+        
+        // According to AWS docs, the response format is:
+        // { "seeds": [2130420379], "finish_reasons": [null], "images": ["..."] }
+        if (responseBody.has("images") && responseBody.get("images").isArray() && 
+            responseBody.get("images").size() > 0) {
+            
+            String base64ImageData = responseBody.get("images").get(0).asText();
+            String contentType = "image/png"; // Default for Stable Image Core
+            
             return BedrockImageGeneratorResponse.builder()
-                .imageUrl(base64ImageData)
+                .imageBase64(base64ImageData)
                 .contentType(contentType)
-                .build();
-
-        } catch (JsonProcessingException e) {
-            System.err.printf("ERROR: Failed to parse response. Reason: %s%n", e.getMessage());
-            throw new RuntimeException("Failed to parse image generation response", e);
-        } catch (SdkClientException e) {
-            System.err.printf("ERROR: Can't invoke '%s'. Reason: %s%n", MODEL_ID, e.getMessage());
-            throw new RuntimeException("Failed to generate image", e);
+                .build();                    
+        } else {
+            throw new RuntimeException("Unexpected response structure from Bedrock API");
         }
     }
     

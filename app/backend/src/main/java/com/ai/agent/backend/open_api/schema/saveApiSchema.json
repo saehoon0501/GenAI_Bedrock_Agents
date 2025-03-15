@@ -6,7 +6,7 @@
       "version": "1.0.0"
     },
     "paths": {
-      "/save/content": {
+      "/save/string-content": {
         "post": {
           "summary": "save content to the storage",
           "description": "Saves the content to the storage. The content is saved to the storage.",
@@ -29,6 +29,64 @@
                     "contentType": {
                       "type": "string",
                       "description": "Content type to save"
+                    }
+                  },
+                  "required": ["key", "content", "contentType"]
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "Successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "url": {
+                        "type": "string",
+                        "description": "The url to save the content."
+                      }
+                    },
+                    "required": ["url"]
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid query parameter"
+            },
+            "500": {
+              "description": "Internal server error"
+            }
+          }
+        }
+      },
+      "/save/byte-content": {
+        "post": {
+          "summary": "save binary content to the storage",
+          "description": "Saves binary content to the storage. The content is saved to the storage.",
+          "operationId": "SAVE_BYTE_CONTENT",
+          "requestBody": {
+            "required": true,
+            "content": {
+              "multipart/form-data": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "type": "string",
+                      "description": "Key to save the content. The key is the unique identifier for the content."
+                    },
+                    "content": {
+                      "type": "string",
+                      "format": "binary",
+                      "description": "Binary content to save"
+                    },
+                    "contentType": {
+                      "type": "string",
+                      "description": "Content type of the binary data"
                     }
                   },
                   "required": ["key", "content", "contentType"]
