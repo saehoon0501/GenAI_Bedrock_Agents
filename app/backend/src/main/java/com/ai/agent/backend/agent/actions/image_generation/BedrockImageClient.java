@@ -57,14 +57,12 @@ public class BedrockImageClient {
         // Decode the response body
         String responseBodyStr = response.body().asUtf8String();            
         JsonNode responseBody = objectMapper.readTree(responseBodyStr);
-        
-        // According to AWS docs, the response format is:
-        // { "seeds": [2130420379], "finish_reasons": [null], "images": ["..."] }
+                
         if (responseBody.has("images") && responseBody.get("images").isArray() && 
             responseBody.get("images").size() > 0) {
             
             String base64ImageData = responseBody.get("images").get(0).asText();
-            String contentType = "image/png"; // Default for Stable Image Core
+            String contentType = "image/png"; // Default for Stable Image Core            
             
             return BedrockImageGeneratorResponse.builder()
                 .imageBase64(base64ImageData)

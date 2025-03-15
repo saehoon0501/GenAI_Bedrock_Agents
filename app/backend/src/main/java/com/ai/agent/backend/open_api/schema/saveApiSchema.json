@@ -20,7 +20,7 @@
                   "properties": {
                     "key": {
                       "type": "string",
-                      "description": "Key to save the content. The key is the unique identifier for the content."
+                      "description": "Key to save the content. The key is the unique identifier for the content. Should be UUID format."
                     },
                     "content": {
                       "type": "string",
@@ -28,7 +28,7 @@
                     },
                     "contentType": {
                       "type": "string",
-                      "description": "Content type to save"
+                      "description": "Content type to save. Should be a valid MIME type. e.g. text/plain, image/png, image/jpeg, etc."
                     }
                   },
                   "required": ["key", "content", "contentType"]
@@ -77,7 +77,7 @@
                   "properties": {
                     "key": {
                       "type": "string",
-                      "description": "Key to save the content. The key is the unique identifier for the content."
+                      "description": "Key to save the content. The key is the unique identifier for the content. Should be UUID format."
                     },
                     "content": {
                       "type": "string",
@@ -86,7 +86,7 @@
                     },
                     "contentType": {
                       "type": "string",
-                      "description": "Content type of the binary data"
+                      "description": "Content type of the binary data. Should be a valid MIME type. e.g. text/plain, image/png, image/jpeg, etc."
                     }
                   },
                   "required": ["key", "content", "contentType"]
