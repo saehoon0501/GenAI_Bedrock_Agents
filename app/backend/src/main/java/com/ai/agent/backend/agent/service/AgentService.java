@@ -86,14 +86,14 @@ public class AgentService {
                 .sessionState(sessionState)
                 .build();
 
-        sessionMap.remove(invocationId);
+        String sessionId = sessionMap.remove(invocationId);
 
         InvokeAgentResponseHandler handler = InvokeAgentResponseHandler.builder()
             .onResponse(response -> {
                 logger.info("Response Received from Agent: {}", response.toString());
                 // Process the response here
             })
-            .onEventStream(publisher -> publisher.subscribe(event -> handleEvent(event, sessionMap.get(invocationId))))
+            .onEventStream(publisher -> publisher.subscribe(event -> handleEvent(event, sessionId)))
             .onError(error -> {
                 logger.error("Error occurred: ", error);
             })
